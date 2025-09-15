@@ -24,6 +24,9 @@ export default function Index() {
 
   // ✅ Moved outside useEffect so both hooks can access it
   const checkRoute = async () => {
+
+      // await AsyncStorage.clear();
+
   try {
     const token = await AsyncStorage.getItem('auth_token');
     const next = await AsyncStorage.getItem('next');
@@ -43,7 +46,7 @@ export default function Index() {
       }
       return router.replace('/welcome');
     }
-
+console.log('token:', token);
     // Token exists: check verification
     API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     const res = await API.get('/auth/status');
@@ -51,13 +54,11 @@ export default function Index() {
     if (!res.data.email_verified) {
       return router.replace('/verify-email');
     }
-    if (!res.data.phone_verified) {
-      return router.replace('/verify-phone');
-    }
+    
 
     const isComplete = (await AsyncStorage.getItem('registrationCompleted')) === 'true';
     if (isComplete) {
-      return router.replace('/distress-check');
+      return router.replace('/check-status');
     }
 
     const nextScreen = await AsyncStorage.getItem('next');

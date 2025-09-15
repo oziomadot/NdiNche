@@ -1,4 +1,4 @@
-import { Alert, Button, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Button, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import API from '../lib/api';
 import { Picker } from '@react-native-picker/picker';
@@ -13,7 +13,7 @@ const Siblings = () => {
   const [loading, setLoading] = useState(true);
   const [siblingsNumber, setSiblingsNumber] = useState('');
   const [siblingsData, setSiblingsData] = useState([]);
-   const [userId, setUserId] = useState();
+   const [userId, setUserId] = useState('');
     const [nextStep, setNextStep] = useState('');
 
 
@@ -60,14 +60,22 @@ const Siblings = () => {
    
   };
 
-//  useEffect(() => {
-//   const loadUserId = async () => {
-//     const storedId = await AsyncStorage.getItem('userId');
-//     if (storedId) setUserId(parseInt(storedId));
-//   };
-//   loadUserId();
-// }, []);
-
+useEffect(() => {
+  const loadUserId = async () => {
+    try {
+      const storedId = await AsyncStorage.getItem('userId');
+      console.log('Retrieved userId from AsyncStorage:', storedId);
+      if (storedId && storedId !== 'null') {
+        setUserId(storedId);
+      } else {
+        console.error('UserId not found in AsyncStorage');
+      }
+    } catch (error) {
+      console.error('Error loading userId:', error);
+    }
+  };
+  loadUserId();
+}, []);
 
 
 
@@ -91,9 +99,8 @@ const Siblings = () => {
 
 const handleNext = async () => {
 
-   const userId = await AsyncStorage.getItem('userId');
       const nextStep = await AsyncStorage.getItem('nextStep');
-      setUserId(userId);
+      
       if (nextStep) setNextStep(nextStep);
 
   if (!validateForm()) return;
@@ -110,10 +117,10 @@ const handleNext = async () => {
   try {
     const response = await API.post('/siblings',  fullData );
 
-    if (response.status === 201) {
-      const { next, userId, remainingSteps: updatedRemaining } = response.data;
+    if (response.data.success) {
+      const { next,  remainingSteps: updatedRemaining } = response.data;
 
-      await AsyncStorage.setItem('userId', userId.toString());
+      await AsyncStorage.setItem('next', JSON.stringify(next));
       await AsyncStorage.setItem('remainingSteps', JSON.stringify(updatedRemaining || []));
 
 
@@ -138,17 +145,21 @@ const handleNext = async () => {
 
 
   return (
+    <SafeAreaView style={styles.safeArea}>
      <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1, paddingVertical: 25, backgroundColor: '#121212'  }}
               >
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+      <Text style={styles.title}>Siblings Registration</Text>
       <TextInput
         value={siblingsNumber}
         onChangeText={handleSiblingsNumberChange}
         keyboardType="numeric"
         placeholder="Number of siblings"
         style={styles.input}
+        placeholderTextColor="#9ca3af"
+        selectionColor="#34C759"
       />
 
       {siblingsData.map((sibling, index) => (
@@ -160,6 +171,8 @@ const handleNext = async () => {
             value={sibling.firstname}
             onChangeText={(text) => handleSiblingChange(index, 'firstname', text)}
             style={styles.input}
+            placeholderTextColor="#9ca3af"
+            selectionColor="#34C759"
           />
 
           <TextInput
@@ -167,6 +180,8 @@ const handleNext = async () => {
             value={sibling.othername}
             onChangeText={(text) => handleSiblingChange(index, 'othername', text)}
             style={styles.input}
+            placeholderTextColor="#9ca3af"
+            selectionColor="#34C759"
           />
 
           <TextInput
@@ -175,24 +190,30 @@ const handleNext = async () => {
             onChangeText={(text) => handleSiblingChange(index, 'phonenumber', text)}
             keyboardType="phone-pad"
             style={styles.input}
+            placeholderTextColor="#9ca3af"
+            selectionColor="#34C759"
           />
 
+          <View style={styles.pickerContainer}>
           <Picker
             selectedValue={sibling.age_bracket_id}
             onValueChange={(value) => handleSiblingChange(index, 'age_bracket_id', value)}
-            style={styles.input}
+            style={styles.picker}
+            dropdownIconColor="#fff"
           >
-            <Picker.Item label="Select age bracket" value="" style={styles.pickerItem}/>
+            <Picker.Item label="Select age bracket" value=""  color="#9ca3af"/>
             {ageBrackets.map((bracket) => (
               <Picker.Item key={bracket.id} label={bracket.name} value={bracket.id} />
             ))}
           </Picker>
+          </View>
         </View>
       ))}
 
       <Button title="Next" onPress={handleNext} />
     </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }
 
@@ -200,29 +221,40 @@ export default Siblings
 
 const styles = StyleSheet.create({
     container: { padding: 16 },
+  title: {
+    fontSize: 20,
+    marginBottom: 12,
+    fontWeight: 'bold',
+    color: '#ffffff'
+  },
   input: {
     marginBottom: 15,
   borderWidth: 1,
   borderColor: '#aaa',
   padding: 12,
   borderRadius: 8,
-  backgroundColor: '#1b381c',
-  color: '#ffffff',
+  backgroundColor: '#121212',
+  color: '#fff',
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  pickerContainer: {
+    borderWidth: 2, 
+    borderColor: '#ccc', 
+    borderRadius: 8,  
+    justifyContent: 'center',
+    marginVertical: 10,
   },
   picker: {
-    borderWidth: 1,
-    borderColor: '#1b381c',
+    color: '#fff',
+    backgroundColor: '#121212',
   
-    marginVertical: 8,
-     padding: 12,
-  borderRadius: 8,
+  
   },
 
-  pickerItem: {
- backgroundColor: '#1b381c',
- padding: 12,
-  borderRadius: 8,
-  },
+
   siblingSection: {
     marginBottom: 24,
     padding: 10,

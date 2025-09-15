@@ -1,10 +1,12 @@
-import { Alert, Button, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Button, KeyboardAvoidingView, Platform, 
+  ScrollView, StyleSheet, Text, TextInput, View, SafeAreaView } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import API from '../lib/api';
 import { Picker } from '@react-native-picker/picker';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { goToNextStep, handleNextStep } from '../lib/regNav';
+import { handleNextStep } from '../lib/regNav';
+import { StatusBar } from 'expo-status-bar';
 
 
 const partner = () => {
@@ -13,7 +15,7 @@ const partner = () => {
   const [loading, setLoading] = useState(true);
   const [partnersNumber, setPartnersNumber] = useState('');
   const [partnersData, setPartnersData] = useState([]);
-   const [userId, setUserId] = useState('');
+   const [userId, setUserId] = useState(null);
     const [nextStep, setNextStep] = useState('');
 
 
@@ -60,13 +62,22 @@ const partner = () => {
    
   };
 
-//  useEffect(() => {
-//   const loadUserId = async () => {
-//     const storedId = await AsyncStorage.getItem('userId');
-//     if (storedId) setUserId(parseInt(storedId));
-//   };
-//   loadUserId();
-// }, []);
+useEffect(() => {
+  const loadUserId = async () => {
+    try {
+      const storedId = await AsyncStorage.getItem('userId');
+      console.log('Retrieved userId from AsyncStorage:', storedId);
+      if (storedId && storedId !== 'null') {
+        setUserId(storedId);
+      } else {
+        console.error('UserId not found in AsyncStorage');
+      }
+    } catch (error) {
+      console.error('Error loading userId:', error);
+    }
+  };
+  loadUserId();
+}, []);
 
 
 
@@ -89,8 +100,14 @@ const partner = () => {
 const handleNext = async () => {
   if (!validateForm()) return;
 
-  const userId = await AsyncStorage.getItem('userId');
-  setUserId(userId);
+  // Check if userId is available
+  if (!userId || userId === 'null') {
+    Alert.alert('Error', 'User ID is missing. Please restart the registration process.');
+    return;
+  }
+
+  console.log('Using userId for partner submission:', userId);
+  
   const remainingStepsString = await AsyncStorage.getItem('remainingSteps');
   const remainingSteps = remainingStepsString ? JSON.parse(remainingStepsString) : [];
 
@@ -103,10 +120,11 @@ const handleNext = async () => {
   try {
     const response = await API.post('/partners', fullData);
 
-    if (response.status === 201) {
-      const { next, userId, remainingSteps: updatedRemaining } = response.data;
+    if (response.data.success) {
+      console.log('Saved successfully:', response.data);
+      const { next,  remainingSteps: updatedRemaining } = response.data;
 
-      await AsyncStorage.setItem('userId', userId.toString());
+      await AsyncStorage.setItem('next', JSON.stringify(next));
       await AsyncStorage.setItem('remainingSteps', JSON.stringify(updatedRemaining || []));
 
       if (next) {
@@ -129,19 +147,25 @@ const handleNext = async () => {
 
 
   return (
+    <SafeAreaView style={styles.safeArea}>  
+  
      <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
+                style={{ flex: 1,  padding: 20, backgroundColor: '#121212' }}
               >
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
 
-      <View style={{ height: 30 }}/>
+      <View style={{ height: 20 }}/>
+
+      <Text style={styles.title}>Partner Information</Text>
       <TextInput
         value={partnersNumber}
         onChangeText={handlepartnersNumberChange}
         keyboardType="numeric"
         placeholder="Number of partner"
         style={styles.input}
+        placeholderTextColor="#9ca3af"
+        selectionColor="#34C759"
       />
 
       {partnersData.map((partner, index) => (
@@ -153,6 +177,8 @@ const handleNext = async () => {
             value={partner.firstname}
             onChangeText={(text) => handlePartnerChange(index, 'firstname', text)}
             style={styles.input}
+            placeholderTextColor="#9ca3af"
+            selectionColor="#34C759"
           />
 
           <TextInput
@@ -160,6 +186,8 @@ const handleNext = async () => {
             value={partner.othername}
             onChangeText={(text) => handlePartnerChange(index, 'othername', text)}
             style={styles.input}
+            placeholderTextColor="#9ca3af"
+            selectionColor="#34C759"
           />
 
           <TextInput
@@ -168,54 +196,64 @@ const handleNext = async () => {
             onChangeText={(text) => handlePartnerChange(index, 'phonenumber', text)}
             keyboardType="phone-pad"
             style={styles.input}
+            placeholderTextColor="#9ca3af"
+            selectionColor="#34C759"
           />
-
+  <View style={styles.pickerContainer}>
           <Picker
             selectedValue={partner.age_bracket_id}
             onValueChange={(value) => handlePartnerChange(index, 'age_bracket_id', value)}
             style={styles.input}
+            dropdownIconColor="#fff"
           >
             <Picker.Item label="Select age bracket" value="" style={styles.pickerItem}/>
             {ageBrackets.map((bracket) => (
               <Picker.Item key={bracket.id} label={bracket.name} value={bracket.id} />
             ))}
           </Picker>
+          </View>
         </View>
       ))}
 
       <Button title="Next" onPress={handleNext} />
     </ScrollView>
+    <View style={{ height: 20 }}/>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }
 
 export default partner
 
 const styles = StyleSheet.create({
-    container: { padding: 16 },
+    container: { padding: 16, 
+      backgroundColor: '#121212' },
+      safeArea: {
+        flex: 1,
+        backgroundColor: "#fff",
+      },
   input: {
     marginBottom: 15,
-  borderWidth: 1,
+  borderWidth: 2,
   borderColor: '#aaa',
   padding: 12,
   borderRadius: 8,
-  backgroundColor: '#1b381c',
-  color: '#ffffff',
+  backgroundColor: '#121212',
+  color: '#fff',
+  },
+  pickerContainer: {
+    borderWidth: 2, 
+    borderColor: '#ccc', 
+    borderRadius: 8,  
+    justifyContent: 'center',
+    marginVertical: 10,
   },
   picker: {
-    borderWidth: 1,
-    borderColor: '#1b381c',
-  
-    marginVertical: 8,
-     padding: 12,
-  borderRadius: 8,
+    color: '#fff',
+    backgroundColor: '#121212',
   },
 
-  pickerItem: {
- backgroundColor: '#1b381c',
- padding: 12,
-  borderRadius: 8,
-  },
+
   partnersection: {
     marginBottom: 24,
     padding: 10,
@@ -224,4 +262,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#f9f9f9',
   },
+  title: {
+    marginBottom: 10,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#f1f8f1ff',
+    textAlign: 'center',
+  }
+
 })

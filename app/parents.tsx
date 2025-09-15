@@ -1,7 +1,8 @@
-import { Alert, Button, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Button, KeyboardAvoidingView, Platform, SafeAreaView, 
+  ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import API from '../lib/api';
-import CheckBox from '@react-native-community/checkbox';
+import Checkbox from 'expo-checkbox';
 import { Picker } from '@react-native-picker/picker';
 import { handleNextStep } from '../lib/regNav';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,13 +13,30 @@ const [showMother, setShowMother] = useState(false);
 const [ageBrackets, setAgeBrackets] = useState([]);
 const [loading, setLoading] = useState(true);
 const [nextStep, setNextStep] = useState('');
-const [userId, setUserId] = useState();
+  const [userId, setUserId] = useState('');
 const [parentsData, setParentsData] = useState([]);
 
 let isValid = true;
 
   const [father, setFather] = useState({ firstname: '', othername: '', ageBracket: '', phone: '' });
   const [mother, setMother] = useState({ firstname: '', othername: '', ageBracket: '', phone: '' });
+
+  useEffect(() => {
+  const loadUserId = async () => {
+    try {
+      const storedId = await AsyncStorage.getItem('userId');
+      console.log('Retrieved userId from AsyncStorage:', storedId);
+      if (storedId && storedId !== 'null') {
+        setUserId(storedId);
+      } else {
+        console.error('UserId not found in AsyncStorage');
+      }
+    } catch (error) {
+      console.error('Error loading userId:', error);
+    }
+  };
+  loadUserId();
+}, []);
 
   useEffect(() => {
     const fetchAgeBrackets = async () => {
@@ -55,9 +73,9 @@ if (!isValid) return false;
 const handleNext = async () => {
   const dataToSubmit = [];
 
-  const userId = await AsyncStorage.getItem('userId');
+  
       const nextStep = await AsyncStorage.getItem('nextStep');
-      setUserId(userId);
+    
       if (nextStep) setNextStep(nextStep);
 
   if (showFather) {
@@ -103,11 +121,11 @@ const handleNext = async () => {
   try {
     const response = await API.post('/parents', fullData);
 
-    if (response.status === 201) {
+    if (response.data.success) {
 
-      const { next, userId, remainingSteps: updatedRemaining } = response.data;
+      const { next,  remainingSteps: updatedRemaining } = response.data;
 
-      await AsyncStorage.setItem('userId', userId.toString());
+     await AsyncStorage.setItem('next', JSON.stringify(next));
       await AsyncStorage.setItem('remainingSteps', JSON.stringify(updatedRemaining || []));
 
       // ✅ Save next steps to AsyncStorage
@@ -130,21 +148,23 @@ const handleNext = async () => {
 
 
   return (
+    <SafeAreaView style={styles.safeArea}>
      <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={{ flex: 1, paddingVertical: 25 }}
+                    style={{ flex: 1, padding: 20, backgroundColor: '#121212' }}
                   >
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Select Parent(s)</Text>
+      <Text style={styles.title}>Parents Registration</Text>  
+      <Text style={styles.subTitle}>Select Parent(s)</Text>
 
       {/* Checkboxes */}
       <View style={styles.checkboxRow}>
-        <CheckBox value={showFather} onValueChange={setShowFather} />
+        <Checkbox value={showFather} onValueChange={setShowFather} color={showFather ? '#34C759' : undefined} />
         <Text style={styles.label}>Father</Text>
       </View>
 
       <View style={styles.checkboxRow}>
-        <CheckBox value={showMother} onValueChange={setShowMother} />
+        <Checkbox value={showMother} onValueChange={setShowMother} color={showMother ? '#34C759' : undefined} />
         <Text style={styles.label}>Mother</Text>
       </View>
 
@@ -154,12 +174,14 @@ const handleNext = async () => {
           <Text style={styles.subTitle}>Father's Info</Text>
           <TextInput
             placeholder="First Name"
+            placeholderTextColor="#9ca3af"
             value={father.firstname}
             onChangeText={(text) => setFather({ ...father, firstname: text })}
             style={styles.input}
           />
           <TextInput
             placeholder="Othername"
+            placeholderTextColor="#9ca3af"
             value={father.othername}
             onChangeText={(text) => setFather({ ...father, othername: text })}
             style={styles.input}
@@ -167,7 +189,7 @@ const handleNext = async () => {
           <Picker
             selectedValue={father.ageBracket}
             onValueChange={(value) => setFather({ ...father, ageBracket: value })}
-            style={styles.input}>
+            style={styles.picker}>
             <Picker.Item label="Select Age Bracket" value="" />
             {ageBrackets.map((age, index) => (
               <Picker.Item key={age.id} label={age.name} value={age.id} />
@@ -175,6 +197,7 @@ const handleNext = async () => {
           </Picker>
           <TextInput
             placeholder="Phone Number"
+            placeholderTextColor="#9ca3af"
             value={father.phone}
             onChangeText={(text) => setFather({ ...father, phone: text })}
             keyboardType="phone-pad"
@@ -189,28 +212,36 @@ const handleNext = async () => {
           <Text style={styles.subTitle}>Mother's Info</Text>
           <TextInput
             placeholder="First Name"
+            placeholderTextColor="#9ca3af"
             value={mother.firstname}
             onChangeText={(text) => setMother({ ...mother, firstname: text })}
             style={styles.input}
+           
+            selectionColor="#34C759"
           />
           <TextInput
             placeholder="Othername"
+            placeholderTextColor="#9ca3af"
             value={mother.othername}
             onChangeText={(text) => setMother({ ...mother, othername: text })}
             style={styles.input}
           />
+          <View style={styles.pickerContainer}>
           <Picker
                       selectedValue={mother.ageBracket}
                       onValueChange={(value) => setMother({...mother, ageBracket: value})}
-                      style={styles.input}
+                      style={styles.picker}
+                      dropdownIconColor="#fff"
                     >
-                      <Picker.Item label="Select age bracket" value="" style={styles.pickerItem}/>
+                      <Picker.Item label="Select age bracket" value="" />
                       {ageBrackets.map((bracket) => (
                         <Picker.Item key={bracket.id} label={bracket.name} value={bracket.id} />
                       ))}
                     </Picker>
+          </View>
           <TextInput
             placeholder="Phone Number"
+            placeholderTextColor="#9ca3af"
             value={mother.phone}
             onChangeText={(text) => setMother({ ...mother, phone: text })}
             keyboardType="phone-pad"
@@ -222,6 +253,7 @@ const handleNext = async () => {
       <Button title="Next" onPress={handleNext} />
     </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 
 }
@@ -238,10 +270,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff'
   },
+  pickerContainer: {
+    borderWidth: 2, 
+    borderColor: '#ccc', 
+    borderRadius: 8,  
+    justifyContent: 'center',
+    marginVertical: 10,
+  },
+  picker: {
+    color: '#fff',
+    backgroundColor: '#121212',
+  
+  
+  },
   subTitle: {
     fontSize: 18,
     marginVertical: 8,
     fontWeight: '600',
+    color: '#7cf'
   },
   checkboxRow: {
     flexDirection: 'row',
@@ -265,12 +311,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 10,
     marginVertical: 6,
-    backgroundColor: '#1b381c',
-    color: '#ffffff'
+    backgroundColor: '#121212',
+    color: '#fff'
   },
-   pickerItem: {
- backgroundColor: '#1b381c',
- padding: 12,
-  borderRadius: 8,
+
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#fff",
   },
 });

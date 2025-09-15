@@ -116,7 +116,7 @@ const strengthColor = {
 
    // Submit form data to backend
     const res = await API.post('/register', registerData);
-console.log('res', res.data);
+    console.log('res', res.data);
     // Update context if needed
     updateRegisterData(registerData);
 

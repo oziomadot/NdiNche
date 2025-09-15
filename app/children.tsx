@@ -1,4 +1,5 @@
-import { Alert, Button, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native'
+import { Alert, Button, KeyboardAvoidingView, Platform, ScrollView, 
+  StyleSheet, Text, TextInput, View, SafeAreaView} from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,7 +16,7 @@ import { handleNextStep } from '../lib/regNav';
   const [loading, setLoading] = useState(true);
   const [childrenNumber, setChildrenNumber] = useState('');
   const [childrenData, setChildrenData] = useState([]);
-  const [userId, setUserId] = useState();
+  const [userId, setUserId] = useState(null);
   const [nextStep, setNextStep] = useState('');
 
 
@@ -34,6 +35,22 @@ import { handleNextStep } from '../lib/regNav';
     setChildrenData(updated);
   };
 
+  useEffect(() => {
+  const loadUserId = async () => {
+    try {
+      const storedId = await AsyncStorage.getItem('userId');
+      console.log('Retrieved userId from AsyncStorage:', storedId);
+      if (storedId && storedId !== 'null') {
+        setUserId(storedId);
+      } else {
+        console.error('UserId not found in AsyncStorage');
+      }
+    } catch (error) {
+      console.error('Error loading userId:', error);
+    }
+  };
+  loadUserId();
+}, []);
   
 
   const handleChildChange = (index, field, value) => {
@@ -62,23 +79,14 @@ import { handleNextStep } from '../lib/regNav';
   return true;
 };
 
-// useEffect(() => {
-//   const loadNextStep = async () => {
-//     const storedNext = await AsyncStorage.getItem('nextStep');
-//     if (storedNext) {
-//       setNextStep(storedNext);
-//     }
-//   };
 
-//   loadNextStep();
-// }, []);
 
 
   const handleNext = async () => {
 
-    const userId = await AsyncStorage.getItem('userId');
+    
       const nextStep = await AsyncStorage.getItem('nextStep');
-      setUserId(userId);
+      
       if (nextStep) setNextStep(nextStep);
     
     
@@ -94,10 +102,10 @@ import { handleNextStep } from '../lib/regNav';
     try {
       const response = await API.post('/registerchildren', fullData);
 
-       if (response.status === 201) {
-      const { next, userId, remainingSteps: updatedRemaining } = response.data;
+       if (response.data.success) {
+      const { next, remainingSteps: updatedRemaining } = response.data;
 
-      await AsyncStorage.setItem('userId', userId.toString());
+      await AsyncStorage.setItem('next', JSON.stringify(next));
       await AsyncStorage.setItem('remainingSteps', JSON.stringify(updatedRemaining || []));
 
 console.log(response);
@@ -128,15 +136,8 @@ console.log(response.data);
      
   const init = async () => {
     try {
+  
       
-
-      if (!userId) {
-        Alert.alert('Error', 'User ID not found. Please complete registration first.');
-        return router.replace('/register');
-      }
-
-      
-
       const res = await API.get('/age-brackets')
               .then((res) => {
     // console.log('Fetched Age Brackets:', res.data); // ✅ This logs the actual fetched data
@@ -157,17 +158,21 @@ console.log(response.data);
 
 
   return (
+    <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={{ flex: 1, paddingVertical: 25, backgroundColor: '#121212' }}
+            style={{ flex: 1, padding: 20, backgroundColor: '#121212' }}
           >
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+    <Text style={styles.title}>Children Registration</Text>
       <TextInput
         value={childrenNumber}
         onChangeText={handleChildrenNumberChange}
         keyboardType="numeric"
         placeholder="Number of children"
         style={styles.input}
+        placeholderTextColor="#9ca3af"
+        selectionColor="#34C759"
       />
 
       {childrenData.map((child, index) => (
@@ -179,6 +184,8 @@ console.log(response.data);
             value={child.firstname}
             onChangeText={(text) => handleChildChange(index, 'firstname', text)}
             style={styles.input}
+            placeholderTextColor="#9ca3af"
+            selectionColor="#34C759"
           />
 
           <TextInput
@@ -186,6 +193,8 @@ console.log(response.data);
             value={child.othername}
             onChangeText={(text) => handleChildChange(index, 'othername', text)}
             style={styles.input}
+            placeholderTextColor="#9ca3af"
+            selectionColor="#34C759"
           />
 
           <TextInput
@@ -194,16 +203,20 @@ console.log(response.data);
             onChangeText={(text) => handleChildChange(index, 'phonenumber', text)}
             keyboardType="phone-pad"
             style={styles.input}
+            placeholderTextColor="#9ca3af"
+            selectionColor="#34C759"
           />
 
+<View style={styles.pickerContainer}>
           <Picker
             selectedValue={child.age_bracket_id}
             onValueChange={(value) => handleChildChange(index, 'age_bracket_id', value)}
             style={styles.picker}
+            dropdownIconColor="#fff"
           >
-            <Picker.Item label="Select age bracket" value="" style={styles.pickerItem}/>
- {ageBrackets.map((item) => (
-            <Picker.Item key={item.id} value={item.id} label={item.name} style={styles.pickerItem} />
+            <Picker.Item label="Select age bracket" value="" color="#9ca3af"/>
+      {ageBrackets.map((item) => (
+            <Picker.Item key={item.id} value={item.id} label={item.name} style={styles.pickerItem} color="#9ca3af" />
           ))}
 
             {/* {Array.isArray(ageBrackets) && ageBrackets.length > 0 &&
@@ -211,13 +224,15 @@ console.log(response.data);
     <Picker.Item key={item.id} value={item.id} label={item.name} />
 ))} */}
           </Picker>
-       
+          </View>
         </View>
       ))}
 
       <Button title="Next" onPress={handleNext} />
     </ScrollView>
+    <View style={{ height: 20 }}/>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -225,29 +240,31 @@ console.log(response.data);
 export default ChildrenScreen;
 const styles = StyleSheet.create({
   container: { padding: 16 },
-
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
   input: {  marginBottom: 15,
-  borderWidth: 1,
+  borderWidth: 2,
   borderColor: '#aaa',
   padding: 12,
   borderRadius: 8,
-  backgroundColor: '#1b381c',
-  color: '#ffffff',
+  backgroundColor: '#121212',
+  color: '#fff',
 },
-
+  pickerContainer: {
+    borderWidth: 2, 
+    borderColor: '#ccc', 
+    borderRadius: 8,  
+    justifyContent: 'center',
+    marginVertical: 10,
+  },
   picker: {
-    borderWidth: 1,
-    borderColor: '#1b381c',
-  
-    marginVertical: 8,
-     padding: 12,
-  borderRadius: 8,
+    color: '#fff',
+    backgroundColor: '#121212',  
+    
   },
-  pickerItem: {
- backgroundColor: '#1b381c',
- padding: 12,
-  borderRadius: 8,
-  },
+ 
   childSection: {
     marginBottom: 24,
     padding: 10,
@@ -255,5 +272,11 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 8,
     backgroundColor: '#f9f9f9',
+  },
+  title: {
+    fontSize: 20,
+    marginBottom: 12,
+    fontWeight: 'bold',
+    color: '#ffffff'
   },
 });

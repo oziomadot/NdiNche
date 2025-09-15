@@ -4,9 +4,12 @@ import { CameraType, CameraView, useCameraPermissions, Camera } from 'expo-camer
 // import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { manipulateAsync } from 'expo-image-manipulator';
+
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import { Video } from 'react-native-compressor';
+import * as ImagePicker from 'expo-image-picker';
+// import { Video } from 'react-native-compressor';
+// Removed react-native-compressor import - using Expo alternatives instead
 
 
 
@@ -23,7 +26,7 @@ export default function FaceScan({ navigation }) {
   const [countdown, setCountdown] = useState(0);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [userImage, setUserImage] = useState();
-  const [userId, setUserId] = useState();
+  const [userId, setUserId] = useState('');
   const [thumbnailImage, setThumbnailImage] =useState(null);
   const [uploadButton, setUploadButton] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -31,23 +34,45 @@ export default function FaceScan({ navigation }) {
   const cameraRef = useRef<CameraView>(null);
 
 
- // Fetch Marital Status when resident state changes
- useEffect(() => {
-    try{
-    API.get(`/id-cards/${userId}`)
-      .then((res) => {
 
-        setUserImage(res.data.pix);
 
-        console.log('User Image is: ' + res.data.pix);
-      })
-      .catch((err) => Alert.alert('Error', 'Failed to load user'));
-    }catch($e){
+useEffect(() => {
+  let isMounted = true;
 
+  const load = async () => {
+    try {
+      console.log('🔍 Loading userId from AsyncStorage...');
+      const storedId = await AsyncStorage.getItem('userId');
+      console.log('📱 Retrieved userId:', storedId);
+      
+      if (!storedId || storedId === 'null') {
+        console.log('❌ No valid userId found in AsyncStorage');
+        Alert.alert('Error', 'User ID not found. Please complete registration first.');
+        return;
+      }
+
+      if (!isMounted) return;
+      setUserId(storedId);
+      console.log('✅ userId set to state:', storedId);
+
+      console.log('🌐 Fetching user image from API...');
+      const res = await API.get(`/id-cards/${storedId}`);
+      if (!isMounted) return;
+      
+      console.log('📸 API response:', res.data);
+      setUserImage(res.data?.pix ?? null);
+      console.log('✅ userImage set to:', res.data?.pix);
+    } catch (e) {
+      console.error('❌ Error loading user data:', e);
+      Alert.alert('Error', `Failed to load user: ${e.message}`);
     }
-    }, []);
+  };
 
+  load();
+  return () => { isMounted = false; };
+}, []);
 
+    
 
   const toggleCameraFacing = () => {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
@@ -68,24 +93,25 @@ export default function FaceScan({ navigation }) {
   };
 
 
-  const generateThumbnail = async (videoUri) => {
-    try{
-      console.log('createing thumbnail');
-  const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
-    time: 1000, // 1 second into video
-  });
-setThumbnailImage(uri);
+  const generateThumbnail = async (videoUri: string) => {
+    try {
+      console.log('creating thumbnail...');
+      const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
+        time: 1000, // 1 second into video
+      });
+  
+      setThumbnailImage(uri);
+      console.log("Thumbnail created:", uri);
+     
+      Alert.alert('Thumbnail created'); // <-- after setThumbnailImage
+      return uri;
+    } catch (e) {
+      console.warn('Thumbnail creation failed', e);
+    }
+  };
+  
 
 
-
-console.log("Thumbnail created:", uri);
-
-  return uri;
-
-  } catch (e) {
-   console.warn(e);
-  }
-};
 
 
 
@@ -113,14 +139,15 @@ const downloadUserImage = async (userImage) => {
   console.log(`I have the:`, userImage);
 
   const sanitized = userImage.replace('public/', '');
-  const url = `https://5fbb849de4e2.ngrok-free.app/storage/${sanitized}`;
+  const url = `https://90c0ccb06bfd.ngrok-free.app/storage/${sanitized}`;
+
   //  const url = `https://a9a38ac767d4.ngrok-free.app/storage/${userImage}`;
   const dest = FileSystem.documentDirectory + 'user-id.jpg';
 
   try {
     const { uri } = await FileSystem.downloadAsync(url, dest);
     const info = await FileSystem.getInfoAsync(uri);
-    console.log('✅ Downloaded user image to:', uri, 'Size:', info.size);
+    console.log('✅ Downloaded user image to:', uri);
 
     // checkDownload(url);
 
@@ -137,16 +164,19 @@ const downloadUserImage = async (userImage) => {
 
 
 useEffect(() => {
-    // Only proceed when both images are ready
-    if (!thumbnailImage || !userImage) {
-      console.log('waiting for thumbnailImage & userImage…');
-      return;
-    }
+    
 
-    const doFaceCompare = async () => {
-      setVerifying(true);
+  const doFaceCompare = async () => {
+    console.log('🔍 doFaceCompare called');
+    console.log('📱 userId:', userId);
+    console.log('🖼️ thumbnailImage:', thumbnailImage);
+    console.log('🆔 userImage:', userImage);
 
-
+// Only proceed when both images are ready
+if (!thumbnailImage || !userImage) {
+  console.log('⏳ waiting for thumbnailImage & userImage…');
+  return;
+}
       // 1) Download the full ID image and get a file:// URI
       const fullImageUri = await downloadUserImage(userImage);
       if (!fullImageUri) {
@@ -154,34 +184,47 @@ useEffect(() => {
         setVerifying(false);
         return;
       }
-
-
-
-
+      
       checkDownload(fullImageUri);
 
       const fullBase64 = await FileSystem.readAsStringAsync(fullImageUri, {
   encoding: FileSystem.EncodingType.Base64,
 });
 
-      console.log('Full User Image URI:', fullImageUri);
+
+// Assume base64Image is your base64 string (without the data URI prefix)
+// const manipulated = await ImageManipulator.manipulateAsync(
+//   fullImageUri,
+//   [{ resize: { width: 800 } }],
+//   { format: ImageManipulator.SaveFormat.JPEG, compress: 0.9, base64: true }
+// );
+
+//       console.log('Full User Image URI:', manipulated);
+//       console.log("Manipulated file:", manipulated.uri);
+console.log("Base64 starts:");
 
       // 2) Build FormData
       const formData = new FormData();
       formData.append('api_key', 'snSEh7PiHU3gWvuQogsiVaYVPNjSRAmO');
       formData.append('api_secret', 'fJNalM3HHIPw02F4GaFcW6h9BDfqNOV_');
+
+      //send ThumbnailImage as file
       formData.append('image_file1', {
         uri: thumbnailImage,
         name: 'thumbnailImage.jpg',
         type: 'image/jpeg',
-      });
+      } as any);
+
+      formData.append('image_base64_2', fullBase64);
+      // formData.append('image_file2', {
+      //   uri: fullImageUri,
+      //   name: 'id.jpg',
+      //   type: 'image/jpeg',
+      // } as any);
 
       // formData.append('image_base64_2', fullBase64);
-      formData.append('image_file2', {
-        uri: fullImageUri,
-        name: 'id.jpg',
-        type: 'image/jpeg',
-      });
+
+      setVerifying(true);
 
       // 3) Call the Face++ compare API
       try {
@@ -212,45 +255,45 @@ useEffect(() => {
 
 
 
-  const startRecording = async () => {
-    if (!cameraRef.current || !isCameraReady) {
-      console.warn('Camera not ready');
+
+
+const startRecording = async () => {
+  if (!cameraRef.current || !isCameraReady) {
+    console.warn("Camera not ready");
+    return;
+  }
+
+  try {
+    const { status: micStatus } = await Camera.requestMicrophonePermissionsAsync();
+    if (micStatus !== "granted") {
+      Alert.alert("Microphone permission is required to record video");
       return;
     }
 
-    try {
+    setRecording(true);
 
-      const { status: micStatus } = await Camera.requestMicrophonePermissionsAsync();
-if (micStatus !== 'granted') {
-  Alert.alert('Microphone permission is required to record video');
-  return;
-}
-
-
-
-      setRecording(true);
-      const video = await cameraRef.current.recordAsync({
-         maxDuration: 10, // record max 10 seconds video
-        quality: '720p',
+    const video = await cameraRef.current.recordAsync({
+      maxDuration: 10, // limit duration
+      // maxFileSize: 90000, // reduce resolution
+      maxFileSize: 9 * 1024 * 1024,
+   
     });
 
-      if (video?.uri) {
-        console.log('Video recorded at:', video.uri);
-        setVideoUri(video.uri);
-        generateThumbnail(video.uri);
-        
-        Alert.alert('Recording finished');
-      } else {
-        Alert.alert('Recording failed: No URI');
-      }
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Recording Error', err.message);
-    } finally {
-      setRecording(false);
+    if (video?.uri) {
+      console.log("Video recorded at:", video.uri);
+      setVideoUri(video.uri);
+      generateThumbnail(video.uri);
+      Alert.alert("Recording finished");
+    } else {
+      Alert.alert("Recording failed: No URI");
     }
-  };
-
+  } catch (err) {
+    console.error(err);
+    Alert.alert("Recording Error", err.message);
+  } finally {
+    setRecording(false);
+  }
+};
 
   // compare face and ID
 
@@ -265,63 +308,45 @@ if (micStatus !== 'granted') {
   const uploadVideo = async () => {
     if (!videoUri) return Alert.alert('No video to upload');
 
-
-
-
-const info1 = await FileSystem.getInfoAsync(videoUri);
-
-    console.log("Video size before compress:", info1.size);
-
-console.log('About to compress: Lets wait ');
-
-const result = await Video.compress(
-  videoUri,
-  {
-    compressionMethod: 'auto',
-    progressDivider: 10,
-    downloadProgress: (progress) => {
-      console.log('downloadProgress: ', progress);
-    },
-  },
-  (progress) => {
-    console.log('Compression Progress: ', progress);
-  }
-);
-
-
-console.log("Compressed video URI:", result);
-
-
-    const info = await FileSystem.getInfoAsync(result);
-
-    console.log("Video size before upload:", info.size);
-
-    const formData = new FormData();
-    const userId = await AsyncStorage.getItem('userId');
-    setUserId(userId);
-
-    formData.append('result', {
-      uri: result,
-      name: 'video.mp4',
-      type: 'video/mp4',
-    });
-    // formData.append('user_id', userId);
-
     try {
+      const info1 = await FileSystem.getInfoAsync(videoUri);
+      console.log("Video size before processing:", info1);
+
+      // For now, we'll use the original video without compression
+      // const compressedUri = await Video.compress(videoUri, {
+      //   compressionMethod: 'auto', // or 'manual'
+      //   minimumFileSizeForCompress: 5, // in MB
+      // });
+
+
+      // const videoNew = await FileSystem.getInfoAsync(compressedUri);
+
+      // console.log("New video size is: ", videoNew)
+      // In a production app, you might want to implement server-side compression
+      // or use a different approach for video optimization
+      const videoFile = {
+        uri: videoUri,
+        name: 'video.mp4',
+        type: 'video/mp4',
+      };
+
+      const formData = new FormData();
+      formData.append('result', videoFile as any);
+
+      console.log("Uploading video file:", videoFile);
+
       const response = await API.post(`/update-id/${userId}`, formData, {
-        headers: {  'Content-Type': 'multipart/form-data',
-        Accept: 'application/json', },
+        headers: {  
+          'Content-Type': 'multipart/form-data',
+          Accept: 'application/json', 
+        },
       });
 
       console.log('This is the response', response.data);
-        console.log('This is the response', response);
+       
       if (response.data.success) {
         Alert.alert('Verification Process completed');
-     
-        await AsyncStorage.setItem('userId', userId.toString());
-        
-      
-         handleNextStep('face-scan', response.data);
+        handleNextStep('face-scan', response.data);
       } else {
         Alert.alert('Failed', response.data.message || 'Verification failed');
       }

@@ -3,7 +3,7 @@ import { Alert, Button, StyleSheet, Text, View } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { useEventListener } from 'expo';
 const HowItWorks = () => {
   const videoRef = useRef(null);
   const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
@@ -16,6 +16,11 @@ const HowItWorks = () => {
     player.play();
   });
 
+   useEventListener(player, 'playToEnd', () => {
+     setHasPlayedOnce(true);
+            setShowUnderstandButton(true);
+    console.log('Video has ended');
+  });
   useEffect(() => {
     Alert.alert(
       'Congratulations!',
@@ -45,16 +50,11 @@ const HowItWorks = () => {
         player={player}
         allowsFullscreen
         allowsPictureInPicture
-        isMuted={false}
-        resizeMode="contain"
-        useNativeControls
+        
+        
+        nativeControls
         style={styles.video}
-        onPlaybackStatusUpdate={(status) => {
-          if (status.didJustFinish && !hasPlayedOnce) {
-            setHasPlayedOnce(true);
-            setShowUnderstandButton(true);
-          }
-        }}
+        
       />
 
       <View style={styles.buttons}>
@@ -70,6 +70,7 @@ const HowItWorks = () => {
 };
 
 export default HowItWorks;
+
 
 const styles = StyleSheet.create({
   container: {

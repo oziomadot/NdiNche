@@ -7,7 +7,7 @@ import API from '../lib/api';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { handleNextStep } from '../lib/regNav';
-
+import * as Location from 'expo-location';
 import * as ImageManipulator from 'expo-image-manipulator';
 // import { FlipType, SaveFormat, useImageManipulator } from 'expo-image-manipulator';
 
@@ -36,7 +36,7 @@ const PersonalDetails = () => {
   const [lgas, setLgas] = useState([]);
   const [lgasResidentList, setLgasResidentList]= useState([]);
  
-  const [userId, setUserId]= useState();
+  const [userId, setUserId]= useState('');
 
 
 
@@ -72,11 +72,13 @@ useEffect(() => {
 
   useEffect(() => {
     (async () => {
-
-      // const userId = await AsyncStorage.getItem('userId');
-      // setUserId(userId);
+      const { status1 } = await Location.requestForegroundPermissionsAsync();
+      if (status1 !== 'granted') {
+        Alert.alert('Permission Denied', 'This app needs location permission to work properly.');
+      }
 
       const userId = await AsyncStorage.getItem('userId');
+      setUserId(userId);
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Camera permissions are required to use this feature.');
@@ -188,6 +190,8 @@ const handleRegister = async () => {
  
 console.log('user Id:', userId);
 
+
+
   if (!validateForm()) return;
 
   const fullData = new FormData();
@@ -220,7 +224,7 @@ console.log('Platform:', Platform.OS);
     uri: image,
     name: 'profileImage.jpg',
     type: 'image/jpg',
-  });
+  } as any);
 
   
   }
@@ -247,7 +251,7 @@ if (!userId || userId === 'null') {
     fullData.append(key, value?.toString() || '');
   });
   
-  fullData.append('userId', userId);
+  
 
   try {
     const response = await API.post('/personal-details', fullData, {
@@ -257,14 +261,14 @@ if (!userId || userId === 'null') {
    
       }
     });
+ console.log('Response:', response.data);
 
-
-    if (response.status === 201) {
-      const { next, userId, remainingSteps } = response.data;
-      await AsyncStorage.setItem('userId', userId.toString());
+    if (response.data.success) {
+      const { next,  remainingSteps } = response.data;
+   
       await AsyncStorage.setItem('nextSteps', JSON.stringify(next));
       await AsyncStorage.setItem('remainingSteps', JSON.stringify(remainingSteps));
-      console.log('user Id:', userId);
+      
       Alert.alert('Success', 'Registration successful!');
       await handleNextStep('personal-details', response.data);
     } else {
@@ -287,19 +291,23 @@ if (!userId || userId === 'null') {
   return (
        <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1, backgroundColor: '#121212' }}
+        style={{ flex: 1, padding: 20 }}
       >
     <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <View style={{ height: 5 }}/>
       <Text style={styles.title}>Registration Page 2</Text>
 
- 
+      
 
- <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6, marginBottom: 15, height: 50, justifyContent: 'center' }}>
+ <View style={styles.pickerContainer}>
         <Picker
-          selectedValue={maritalStatus}   onValueChange={setMaritalStatus}    style={styles.picker}    >
-          <Picker.Item label="Select Marital status" value="" />
+          selectedValue={maritalStatus}  
+           onValueChange={setMaritalStatus}    
+           style={styles.picker}   
+           dropdownIconColor="#fff">
+          <Picker.Item label="Select Marital status" value="" color="#9ca3af" />
           {relationship.map((item) => (
-            <Picker.Item key={item.id} value={item.id} label={item.name} />
+            <Picker.Item key={item.id} value={item.id} label={item.name} color="#9ca3af" />
           ))}
         </Picker>
       </View>
@@ -313,49 +321,78 @@ if (!userId || userId === 'null') {
         value={homeAddress}
         onChangeText={setHomeAddress}
         style={styles.input}
+        placeholderTextColor="#9ca3af"
+        selectionColor="#34C759"
       />
 
-      <Picker selectedValue={stateOrigin} onValueChange={setStateOrigin} style={styles.picker}>
+<View style={styles.pickerContainer}>
+      <Picker selectedValue={stateOrigin} onValueChange={setStateOrigin} 
+      style={styles.picker}
+      dropdownIconColor="#fff">
         <Picker.Item label="State of Origin" value="" />
         {states.map((state) => (
-          <Picker.Item key={state.id} label={state.name} value={state.id} />
+          <Picker.Item key={state.id} label={state.name} value={state.id} color="#9ca3af"/>
         ))}
       </Picker>
+</View>
 
-      <Picker selectedValue={lgaOrigin} onValueChange={setLgaOrigin} style={styles.picker}>
+
+      <View style={styles.pickerContainer}>
+      <Picker selectedValue={lgaOrigin} onValueChange={setLgaOrigin}
+       style={styles.picker}
+       dropdownIconColor="#fff">
         <Picker.Item label="LGA of Origin" value="" />
         {lgas.map((lga) => (
-          <Picker.Item key={lga.id} label={lga.name} value={lga.id} />
+          <Picker.Item key={lga.id} label={lga.name} value={lga.id} color="#9ca3af"/>
         ))}
       </Picker>
+      </View>
 
       <TextInput
         placeholder="Resident Address"
         value={residentAddress}
         onChangeText={setResidentAddress}
         style={styles.input}
+         placeholderTextColor="#9ca3af"
+      selectionColor="#34C759"
       />
 
-      <Picker selectedValue={stateResident} onValueChange={setStateResident} style={styles.picker}>
+
+      <View style={styles.pickerContainer}>
+      <Picker selectedValue={stateResident} 
+      onValueChange={setStateResident} style={styles.picker}
+      dropdownIconColor="#fff"
+      >
         <Picker.Item label="State of Residence" value="" />
         {states.map((state) => (
-          <Picker.Item key={state.id} label={state.name} value={state.id} />
+          <Picker.Item key={state.id} label={state.name} value={state.id} color="#9ca3af"/>
         ))}
       </Picker>
+      </View>
 
-      <Picker selectedValue={lgaResident} onValueChange={setLgaResident} style={styles.picker}>
+      <View style={styles.pickerContainer}>
+
+      <Picker selectedValue={lgaResident} onValueChange={setLgaResident} 
+      style={styles.picker}
+      dropdownIconColor="#fff">
         <Picker.Item label="LGA of Residence" value="" />
         {lgasResidentList.map((lga) => (
-          <Picker.Item key={lga.id} label={lga.name} value={lga.id} />
+          <Picker.Item key={lga.id} label={lga.name} value={lga.id} color="#9ca3af" />
         ))}
       </Picker>
-
+      </View>
       <View style={styles.checkboxRow}>
 <TouchableOpacity
   style={styles.checkboxRow}
   onPress={() => setChildren(prev => !prev)}
 >
-  <Switch value={children} onValueChange={setChildren} />
+  <Switch 
+  value={children} 
+  onValueChange={setChildren} 
+  trackColor={{ false: '#6b7280', true: '#34C759' }}
+  thumbColor={children ? '#e5e7eb' : '#f4f4f5'}/>
+
+
   <Text style={styles.label}>I have child/children</Text>
 </TouchableOpacity>
 
@@ -370,7 +407,12 @@ if (!userId || userId === 'null') {
   style={styles.checkboxRow}
   onPress={() => setSiblings(prev => !prev)}
 >
-  <Switch value={siblings} onValueChange={setSiblings} />
+  <Switch 
+  value={siblings} 
+  onValueChange={setSiblings} 
+  trackColor={{ false: '#6b7280', true: '#34C759' }}
+  thumbColor={siblings ? '#e5e7eb' : '#f4f4f5'}/>
+
   <Text style={styles.label}>I have siblings</Text>
 </TouchableOpacity>
 
@@ -384,8 +426,12 @@ if (!userId || userId === 'null') {
   style={styles.checkboxRow}
   onPress={() => setParents(prev => !prev)}
 >
-  <Switch value={parents} onValueChange={setParents} />
-  <Text style={styles.label}>I have siblings</Text>
+  <Switch 
+  value={parents} 
+  onValueChange={setParents} 
+  trackColor={{ false: '#6b7280', true: '#34C759' }}
+  thumbColor={parents ? '#e5e7eb' : '#f4f4f5'}/>
+  <Text style={styles.label}>My parents are alive</Text>
 </TouchableOpacity>
         {/* <Switch value={parents} onValueChange={setParents} />
         <Text style={styles.label}>My parents are alive</Text> */}
@@ -410,6 +456,7 @@ if (!userId || userId === 'null') {
    <View style={{ height: 10 }} />
       <Button title="Register" onPress={handleRegister} />
     </ScrollView>
+    <View style={{ height: 20 }}/>
     </KeyboardAvoidingView>
   );
 };
@@ -423,25 +470,44 @@ const styles = StyleSheet.create({
   borderWidth: 1,
   backgroundColor: '#121212',
 },
-  container: { padding: 20, backgroundColor: '#121212', },
-  input: {  marginBottom: 15,
-  borderWidth: 1,
+  container: { 
+    backgroundColor: '#121212', 
+  },
+
+  pickerContainer: {
+     borderWidth: 2, 
+     borderColor: '#ccc', 
+     borderRadius: 8,  
+     justifyContent: 'center',
+     marginVertical: 10,
+  },
+  input: { 
+  borderWidth: 2,
   borderColor: '#aaa',
-  padding: 12,
+  overflow: "hidden",
   borderRadius: 8,
   backgroundColor: '#121212',
-  color: 'white' 
+  color: '#fff' 
 },
-  picker: { marginBottom: 15 },
-  checkboxRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  picker: {
+    color: '#fff',    
+    backgroundColor: '#121212',  
+  },
+  checkboxRow: { flexDirection: 'row', 
+    alignItems: 'center',
+     marginBottom: 10 
+    
+  },
   label: { marginLeft: 8,
     backgroundColor: '#121212',
-    color: 'white'
+    color: '#fff'
   },
   title: { fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: 'white', },
+    color: '#fff',
+    textAlign: 'center'
+   },
 
      preview: {
     width: '100%',

@@ -7,7 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "jsEngine": "jsc",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -16,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": ".ios",
+      "bundleIdentifier": "com.oracledot.NdiNche",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -26,17 +25,19 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.INTERNET",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.ACCESS_MEDIA_LOCATION",
-        "android.permission.CAMERA"
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
-      "package": "com.oracledot.NdiNche"
+      "package": "com.oracledot.NdiNche",
+      "enableDangerousExperimentalLeanBuilds": false,
+      "apkType": "universal"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -44,12 +45,14 @@
     "plugins": [
       "expo-router",
       "expo-audio",
-       ["expo-video", {
-    "supportsBackgroundPlayback": true,
-    "supportsPictureInPicture": true
-  }],
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
       "expo-secure-store",
-      "react-native-compressor",
       [
         "expo-media-library",
         {
@@ -72,7 +75,9 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
           "recordAudioAndroid": true
         }
-      ]
+      ],
+      "react-native-compressor",
+      "expo-background-task"
     ],
     "developmentClient": {
       "silentLaunch": false

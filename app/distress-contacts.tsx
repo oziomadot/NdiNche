@@ -1,5 +1,5 @@
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import API from '../lib/api';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,8 +12,25 @@ import { handleNextStep } from '../lib/regNav';
   { group: '', selectedPerson: null, people: [] },  // Contact 2
   { group: '', selectedPerson: null, people: [] },  // Contact 3
 ]);
-const [userId, setUserId] = useState();
+const [userId, setUserId] = useState('');
 const [nextStep, setNextStep] = useState('');
+
+useEffect(() => {
+  const loadUserId = async () => {
+    try {
+      const storedId = await AsyncStorage.getItem('userId');
+      console.log('Retrieved userId from AsyncStorage:', storedId);
+      if (storedId && storedId !== 'null') {
+        setUserId(storedId);
+      } else {
+        console.error('UserId not found in AsyncStorage');
+      }
+    } catch (error) {
+      console.error('Error loading userId:', error);
+    }
+  };
+  loadUserId();
+}, []);
 
 
   const groupOptions = [
@@ -47,11 +64,12 @@ const [nextStep, setNextStep] = useState('');
   };
 
 
+  
+
+
 const handleSubmit = async () => {
 
-  const userId = await AsyncStorage.getItem('userId');
-     
-      setUserId(userId);
+ 
        const nextStep = await AsyncStorage.getItem('nextStep');
       if (nextStep) setNextStep(nextStep);
 
@@ -70,9 +88,9 @@ const handleSubmit = async () => {
 
      if (response.status === 201) {
 
-      const { next, userId, remainingSteps: updatedRemaining } = response.data;
+      const { next,  remainingSteps: updatedRemaining } = response.data;
 
-      await AsyncStorage.setItem('userId', userId.toString());
+      
       await AsyncStorage.setItem('remainingSteps', JSON.stringify(updatedRemaining || []));
 
       // ✅ Save next steps to AsyncStorage
@@ -174,12 +192,14 @@ const styles = StyleSheet.create({
   },
 
   heading: {
-    fontSize: 16,
+    fontSize: 20,
     marginBottom: 16,
     fontWeight: '600',
-  
+  textAlign: 'center',
     color: '#ffffff',
-    padding: 2,
+    padding: 10,
+      backgroundColor: '#0f7133ff',
+    
   },
 
    contactBlock: {

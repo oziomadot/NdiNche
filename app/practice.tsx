@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, Alert, StyleSheet, TouchableOpacity, BackHandler } from 'react-native';
+import { View, Text, Button, Alert, StyleSheet, TouchableOpacity, BackHandler, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import * as Linking from 'expo-linking';
@@ -10,9 +10,10 @@ const Practice = () => {
   const [isDistress, setIsDistress] = useState(false);
   const [isRescued, setIsRescued] = useState(false);
   const [showFinal, setShowFinal] = useState(false);
-  const [userId, setUserId] = useState();
+  const [userId, setUserId] = useState('');
   const [instruction, setInstruction] = useState('Go to your app gallery and select the NdiNche app.');
-   const [step, setStep] = useState<'start' | 'selectedApp' | 'confirmedDistress' | 'rescued' | 'complete'>('start');
+  const [step, setStep] = useState<'start' | 'selectedApp' | 'confirmedDistress' | 'rescued' | 'complete'>('start');
+  const [showModal, setShowModal] = useState(true);
 
   useEffect(() => {
     const loadUserAndToken = async () => {
@@ -70,6 +71,27 @@ const Practice = () => {
       }
     ]);
   };
+
+  const getStepMessage = (step) => {
+  switch (step) {
+    case 'start':
+      return 'You will now simulate how to use NdiNche in a real emergency.';
+    case 'selectedApp':
+      return 'You opened the app. Next, you’ll confirm you’re in distress.';
+    case 'confirmedDistress':
+      return 'Your location is being sent to our rescue team. Stay calm.';
+    case 'rescued':
+      return 'Rescue complete! This is how it works in real life.';
+    case 'complete':
+      return 'Practice complete! We’ll save your progress now.';
+    default:
+      return '';
+  }
+};
+
+useEffect(() => {
+  setShowModal(true);
+}, [step]);
 
   const handleClickApp = () => {
     if (practiceCount > 0) {
@@ -141,6 +163,15 @@ console.log('token is', token);
           <Button title="✅ I Have Practiced" onPress={handlePracticeComplete} />
         </View>
       )}
+
+      <Modal visible={showModal} transparent animationType="slide">
+  <View style={styles.modalContainer}>
+    <View style={styles.modalContent}>
+      <Text style={styles.modalText}>{getStepMessage(step)}</Text>
+      <Button title="Got it" onPress={() => setShowModal(false)} />
+    </View>
+  </View>
+</Modal>
     </View>
   );
 };
@@ -153,6 +184,21 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: 'center',
     alignItems: 'center'
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%'
+  },
+  modalText: {
+    fontSize: 18
   },
   title: {
     fontSize: 22,

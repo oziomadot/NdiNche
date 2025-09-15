@@ -20,9 +20,9 @@ const VerifyEmail = () => {
   const [userEmail, setUserEmail] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [showUpdate, setShowUpdate] = useState(false);
-  const [userId, setUserId] = useState();
+  const [userId, setUserId] = useState('');
   const [loading, setLoading] = useState(true);
-  const [emailOtp, setEmailOtp] = useState();
+      const [emailOtp, setEmailOtp] = useState('');
 
   // Fetch current email on mount
   useEffect(() => {
@@ -42,7 +42,7 @@ const VerifyEmail = () => {
       setUserEmail(userEmail);
       setUserId(userId);
 
-
+console.log("userId:", typeof(userId));
       // on mount, fetch email OTP
        const response = await API.post(`/resend-otp`, {
         userId: userId,
@@ -124,9 +124,6 @@ const VerifyEmail = () => {
       if (response.data.success) {
         Alert.alert('Success', 'Email Verified. Now verify your phone number');
        
-        await AsyncStorage.removeItem('userEmail');
-
-
         await handleNextStep('verify-email', response.data);
        
       } else {

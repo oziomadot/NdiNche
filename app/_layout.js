@@ -6,7 +6,7 @@ import { View } from 'react-native';
 import { LinkingOptions } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-const linking: LinkingOptions<ReactNavigation.RootParamList> = {
+const linking = {
   prefixes: ['ndinche://'],
   config: {
     screens: {

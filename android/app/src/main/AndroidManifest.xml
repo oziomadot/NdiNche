@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" package="com.oracledot.NdiNche">
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
   <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION"/>
@@ -38,6 +38,7 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="ndinche"/>
         <data android:scheme="exp+ndinche"/>
+        <data android:scheme="com.oracledot.NdiNche"/>
       </intent-filter>
     </activity>
   </application>

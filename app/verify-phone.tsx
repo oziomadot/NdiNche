@@ -21,7 +21,7 @@ const VerifyPhoneNumber = () => {
   const [userPhoneNumber, setUserPhoneNumber] = useState('');
   const [newPhoneNumber, setNewPhoneNumber] = useState('');
   const [showUpdate, setShowUpdate] = useState(false);
-  const [userId, setUserId] = useState();
+  const [userId, setUserId] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const params = useLocalSearchParams();
@@ -41,6 +41,8 @@ const VerifyPhoneNumber = () => {
         setUserPhoneNumber(userPhonenumber);
         setUserId(userId);
         setUserEmail(userEmail);
+
+        console.log("userId:", typeof(userId));
 
         const response = await API.post(`/resend-smsotp`, {
         userId: userId,
@@ -104,7 +106,7 @@ const VerifyPhoneNumber = () => {
   const decodePayload = async () => {
   if (params.payload) {
     try {
-      const decoded = JSON.parse(atob(params.payload));
+      const decoded = JSON.parse(atob(params.payload as string));
 
       const itemsToStore = [];
 
@@ -130,7 +132,7 @@ const VerifyPhoneNumber = () => {
 
       setLoading(true);
 
-console.log({ token: verificationCode, userId });
+  console.log({ token: verificationCode, userId });
 // ... API call
 
 if (!verificationCode.trim()) {
@@ -139,19 +141,22 @@ if (!verificationCode.trim()) {
 }
 
 
-
+ if (!userId || !userEmail) {
+    Alert.alert('Error', 'Missing user information. Please try again.');
+    return;
+  }
 
       const response = await API.post(`/verify-phoneNumber`, {
         token: verificationCode,
-        userId: userId,
+         userId: Number(userId),
         userEmail: userEmail,
       });
       
+      console.log('phone verified', response.data);
       setLoading(false);
       if (response.data.success) {
         Alert.alert('Success', 'Phone number verified.');
-      //   await AsyncStorage.setItem('registrationComplete', 'false');
-      // const next = await AsyncStorage.getItem('next');
+      
 
       await handleNextStep('verify-phone', response.data);
     

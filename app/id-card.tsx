@@ -21,18 +21,31 @@ const IdCard = () => {
      const [selectedIdType, setSelectedIdType] = useState('');
   const [frontImage, setFrontImage] = useState(null);
   const [backImage, setBackImage] = useState(null);
-  const [userId, setUserId] = useState();
+  const [userId, setUserId] = useState('');
   const [nextStep, setNextStep] = useState();
 
   const requiresBack = ID_TYPES.find((id) => id.value === selectedIdType)?.requiresBack;
 
   useEffect(() => {
+  const loadUserId = async () => {
     try {
+      const storedId = await AsyncStorage.getItem('userId');
+      console.log('Retrieved userId from AsyncStorage:', storedId);
       console.log('ImageManipulator loaded:', !!ImageManipulator.manipulateAsync);
-    } catch (err) {
-      console.error('Manipulator import failed:', err);
+      if (storedId && storedId !== 'null') {
+        setUserId(storedId);
+      } else {
+        console.error('UserId not found in AsyncStorage');
+      }
+    } catch (error) {
+      console.error('Error loading userId:', error);
+      console.error('Manipulator import failed:', error);
     }
-  }, []);
+  };
+  loadUserId();
+}, []);
+
+ 
    
   
     useEffect(() => {
@@ -119,9 +132,7 @@ console.log('Manipulated image URI:', manipulatedResult.uri);
     }
 
  const handleSubmit = async () => {
-  const userId = await AsyncStorage.getItem('userId');
-  setUserId(userId);
-
+ 
   if (!selectedIdType) {
     Alert.alert('Validation', 'Please select ID type.');
     return;
@@ -142,7 +153,7 @@ console.log('Manipulated image URI:', manipulatedResult.uri);
     uri: frontImage.uri,
     name: frontImage.name,
     type: frontImage.type,
-  });
+  } as any);
 
   if (requiresBack && backImage) {
     formData.append('id_back', {
@@ -150,7 +161,7 @@ console.log('Manipulated image URI:', manipulatedResult.uri);
       name: backImage.name,
       type: backImage.type,
       
-    });
+    } as any);
   }
 
   try {
@@ -160,10 +171,10 @@ console.log('Manipulated image URI:', manipulatedResult.uri);
       },
     });
 
-    const { next, userId } = response.data;
+    const { next} = response.data;
 
-    if (response.status === 200 || response.status === 201) {
-      await AsyncStorage.setItem('userId', userId.toString());
+    if (response.data.success) {
+      
       await AsyncStorage.setItem('nextSteps', JSON.stringify(next));
 
       handleNextStep('id-card', response.data);
@@ -244,6 +255,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     marginBottom: 20,
+    marginTop: 20,
+    textAlign: 'center',
+
   },
   label: {
     color: '#fff',
